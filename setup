@@ -1,22 +1,63 @@
 #!/bin/bash
-
 set -euo pipefail
 
-if command -v zsh >/dev/null; then
-    sudo chsh -s $(command -v zsh) $USER
+# Install Homebrew if not present
+if ! command -v brew >/dev/null; then
+    echo "Installing Homebrew..."
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    
+    # Add Homebrew to PATH for the current session
+    if [[ -f "/opt/homebrew/bin/brew" ]]; then
+        # Apple Silicon Mac
+        eval "$(/opt/homebrew/bin/brew shellenv)"
+    elif [[ -f "/usr/local/bin/brew" ]]; then
+        # Intel Mac
+        eval "$(/usr/local/bin/brew shellenv)"
+    elif [[ -f "/home/linuxbrew/.linuxbrew/bin/brew" ]]; then
+        # Linux
+        eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+    fi
 fi
 
+# Install Zsh via Homebrew if not present
+if ! command -v zsh >/dev/null; then
+    echo "Installing Zsh..."
+    brew install zsh
+fi
+
+# Change default shell to Zsh
+ZSH_PATH=$(command -v zsh)
+if [ -n "$ZSH_PATH" ]; then
+    # Add zsh to allowed shells if not already there
+    if ! grep -q "$ZSH_PATH" /etc/shells; then
+        echo "Adding $ZSH_PATH to /etc/shells..."
+        echo "$ZSH_PATH" | sudo tee -a /etc/shells
+    fi
+    
+    # Change default shell
+    if [ "$SHELL" != "$ZSH_PATH" ]; then
+        echo "Changing default shell to Zsh..."
+        sudo chsh -s "$ZSH_PATH" "$USER"
+        echo "Default shell changed. Please log out and back in for changes to take effect."
+    fi
+fi
+
+# Create .zsh directory
 if [ ! -d "$HOME/.zsh" ]; then
-  mkdir -p "$HOME/.zsh"
+    mkdir -p "$HOME/.zsh"
 fi
 
-# Check if pure is already installed
+# Install pure prompt theme
 if [ ! -d "$HOME/.zsh/pure" ]; then
-  git clone https://github.com/sindresorhus/pure.git "$HOME/.zsh/pure"
+    echo "Installing pure prompt..."
+    git clone https://github.com/sindresorhus/pure.git "$HOME/.zsh/pure"
 fi
 
+# Install chezmoi and apply dotfiles
 if ! command -v chezmoi >/dev/null; then
+    echo "Installing chezmoi and applying dotfiles..."
     sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply git@github.com:geewynn/dotfiles.git
 fi
 
+echo "Setup complete!"
 exit 0
