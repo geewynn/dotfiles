@@ -53,6 +53,18 @@ if [ ! -d "$HOME/.zsh/pure" ]; then
     git clone https://github.com/sindresorhus/pure.git "$HOME/.zsh/pure"
 fi
 
+# Install libatomic if missing (required for Node.js)
+if ! ldconfig -p | grep -q libatomic.so.1; then
+    echo "Installing libatomic1..."
+    if command -v apt-get >/dev/null; then
+        sudo apt-get update && sudo apt-get install -y libatomic1
+    elif command -v dnf >/dev/null; then
+        sudo dnf install -y libatomic
+    elif command -v pacman >/dev/null; then
+        sudo pacman -S --noconfirm gcc-libs
+    fi
+fi
+
 # Install chezmoi and apply dotfiles
 if ! command -v chezmoi >/dev/null; then
     echo "Installing chezmoi and applying dotfiles..."
